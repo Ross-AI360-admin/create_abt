@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 # Import the required functions.
-src_path = f'{sys.argv[1]}\create_abt\src'
+src_path = f'{sys.argv[1]}/create_abt/src'
 sys.path.append(src_path)
 from def_getPriceABT_v1 import getPriceABT
 
@@ -50,37 +50,37 @@ print(f"Done.\n")
 
 # import sys
 # from pathlib import Path
-# src_path = 'C:\codebase\create_abt\src'
+# src_path = 'C:/codebase/create_abt/src'
 # sys.path.append(src_path)
 # from def_getPriceABT_v1 import getPriceABT
 
 # STOCK: Create monthly price ABT.
 # idf, odf = getPriceABT(
-#     in_fp          = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\PRICE\MONTHLY\monthlyPrices_av_stock.parquet',
-#     in_company_fp  = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\COMPANY\companyOverviews_fmp_stock.parquet',
+#     in_fp          = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/PRICE/MONTHLY/monthlyPrices_av_stock.parquet',
+#     in_company_fp  = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/COMPANY/companyOverviews_fmp_stock.parquet',
 #     min_date       = '2018-01-01',
 #     max_date       = '',
-#     outpath        = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\ABT\PRICE_ABT',
+#     outpath        = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/ABT/PRICE_ABT',
 #     outdsn_parquet = 'priceABT_month_stock.parquet',
 #     outdsn_csv     = 'priceABT_month_stock.csv'   
 # )
 
 # ETF: Create monthly price stats.
 # idf, odf = getPriceABT(
-#     in_fp          = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\PRICE\MONTHLY\monthlyPrices_av_etf.parquet',      
+#     in_fp          = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/PRICE/MONTHLY/monthlyPrices_av_etf.parquet',      
 #     min_date       = '2010-01-01',
 #     max_date       = '',
-#     outpath        = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\ABT\PRICE_ABT',
+#     outpath        = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/ABT/PRICE_ABT',
 #     outdsn_parquet = 'priceABT_month_etf.parquet',
 #     outdsn_csv     = 'priceABT_month_etf.csv'   
 # )
 
 # ALL: Create monthly price stats.
 # idf, odf = getPriceABT(   
-#     in_fp          = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\PRICE\MONTHLY\monthlyPrices_av_all.parquet',      
+#     in_fp          = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/PRICE/MONTHLY/monthlyPrices_av_all.parquet',      
 #     min_date       = '2010-01-01',
 #     max_date       = '',
-#     outpath        = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\ABT\PRICE_ABT',
+#     outpath        = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/ABT/PRICE_ABT',
 #     outdsn_parquet = 'priceABT_month_all.parquet',
 #     outdsn_csv     = 'priceABT_month_all.csv'   
 # )

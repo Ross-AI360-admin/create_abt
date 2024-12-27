@@ -1,18 +1,18 @@
-###############################################################################
-###############################################################################
+############################################################################################################
+############################################################################################################
 # FUNCTION DEFINITION: getPiotroskiABT()
 #
-# DESCRIPTION: This function takes income statements, balance sheets, and 
-# cashflows as input and computes then computes the Piotroski score for each 
-# stock. The Piotroski is discrete score that ranges from 0 to 9, with 9 being 
-# the best score. This score represents an overall financial health score based 
-# on 9 individual scores. The nine aspects are based on accounting results over 
-# a number of year, where a point is awarded each time a standard is met, 
-# resulting in an overall score. If a company has a score of eight or nine, it 
-# is considered a good value. If a company has a score of between zero and two 
-# points, it is likely not a good value.
+# DESCRIPTION: This function takes income statements, balance sheets, and cashflows as input and then 
+# computes the Piotroski score for each stock. The Piotroski is discrete score that represents the overall
+# financial health of a company. The scores range from 0 to 9, with a score of 9 being the best score and 
+# a score of 0 being the worst score. The scoring method takes into account 9 individual scores, where each
+# score measures a specific financial metric. Some of the scores represent the trend of a specific metric
+# between the current period and the previous period 1-year ago. The total score results from summing up
+# the 9 individual scores. If a company has a score of eight or nine, then it is considered to have to be 
+# in great financial shape. If a company has a score of between zero and two points, it financially 
+# unstable. 
 #
-# PIOTROSKI RULE DATA SOURCES
+# PIOTROSKI RULE DATA SOURCES: is = income statement, bs = balance sheet, cf = cashflow statement 
 #   CR1: netIncome (is)
 #   CR2: totalAssets CY/PY (bs), netIncome(is)
 #   CR3: operatingCashFlow (cf)
@@ -26,12 +26,21 @@
 # DOCUMENTATION: https://www.investopedia.com/terms/p/piotroski-score.asp
 #
 # FUNCTION INPUT ARGS
-#   - is_fp = the complete filepath to the income statement parquet file
-#   - bs_fp = the complete filepath to the balance sheet statement parquet file
-#   - cf_fp = the complete filepath to the cashflow statement parquet file
-#   - outpath         = the folder path where the output data is saved (optional)
-#   - outdsn_parquet  = the name of the output parquet file (optional)
-#   - outdsn_csv      = the name of the output csv file (optional)
+#   - is_df          = the income statement dataframe, which takes precedent over is_fp
+#   - bs_df          = the balance sheet dataframe, which takes precedent over bs_fp
+#   - cf_df          = the cashflow statement dataframe, which takes precedent over cf_fp
+#   - is_fp          = the complete filepath to the income statement parquet file
+#   - bs_fp          = the complete filepath to the balance sheet statement parquet file
+#   - cf_fp          = the complete filepath to the cashflow statement parquet file
+#   - in_company_fp  = input company overview complete filepath (optional)
+#   - min_date       = the minimum date filter to apply to the data (optional)
+#   - max_date       = the maximum date filter to apply to the data (optional)
+#   - outpath        = the folder path where the output data is saved (optional)
+#   - outdsn_parquet = the name of the output parquet file (optional)
+#   - outdsn_csv     = the name of the output csv file (optional)
+#
+# FUNCTION DEPENDENCIES: This function calls the function computePiotroskiRules(),
+# which is defined in below in this file.
 #
 # OUTPUT DATA SCHEMA: see API documentation for complete data schemas
 #   - symbol (str)
@@ -43,8 +52,8 @@
 # OUTPUT FILES
 #   - outdsn_parquet (optional)
 #   - outdsn_csv (optional)
-###############################################################################
-###############################################################################
+############################################################################################################
+############################################################################################################
 def getPiotroskiABT(
     is_df          = '',
     bs_df          = '',
@@ -52,6 +61,9 @@ def getPiotroskiABT(
     is_fp          = '',
     bs_fp          = '',
     cf_fp          = '',
+    in_company_fp  = '',
+    min_date       = '2015-01-01',
+    max_date       = '',    
     outpath        = '',
     outdsn_parquet = '',
     outdsn_csv     = ''      
@@ -156,9 +168,23 @@ def getPiotroskiABT(
     out_df['longTermDebtToTotalAssetsRatio'] = out_df['longTermDebt'] / out_df['totalAssets']
 
     ###################################################################
-    # Define the function that computes the Piotroski Score.
+    # Apply the min and max date thresholds, if they were specified.
     ###################################################################
+    if len(min_date)>0:
+        out_df = out_df.loc[out_df['date']>=pd.to_datetime(min_date)] 
+    if len(max_date)>0:
+        out_df = out_df.loc[out_df['date']<=pd.to_datetime(max_date)]  
+    out_df.sort_values( ['symbol','date'], ascending=[True,True], inplace=True)
+    out_df.reset_index(level=0,drop=True,inplace=True)    
 
+    ###################################################################
+    # Merge in company overview data, if it is specified.
+    ###################################################################
+    curr_len = len(in_company_fp)
+    if curr_len>=9 and in_company_fp[curr_len-8:curr_len]=='.parquet':
+        in_company_df = pd.read_parquet(in_company_fp, engine='pyarrow') 
+        in_company_df = in_company_df[['symbol','sector','industry','ipo_date']]
+        out_df = pd.merge(out_df, in_company_df, on=['symbol'], how='left')
 
     ###################################################################
     # Calculate the Piotroski scores by calling the Piotroski function.
@@ -207,7 +233,7 @@ def getPiotroskiABT(
     ###################################################################
     # RETURN the output dataframe.
     ###################################################################
-    return is_df, out_df  
+    return out_df  
 
 
 ###############################################################################
