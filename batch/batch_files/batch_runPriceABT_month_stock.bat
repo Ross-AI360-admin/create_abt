@@ -25,3 +25,5 @@
  C:/Users/sharo/OneDrive" - "aiinvestor360.com/DATA/ABT/PRICE_ABT/priceABT_month_all.parquet^
  C:/Users/sharo/OneDrive" - "aiinvestor360.com/DATA/ABT/PRICE_ABT/priceABT_month_all.csv^
  ['asset_type','symbol']
+
+exit

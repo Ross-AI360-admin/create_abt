@@ -9,6 +9,7 @@
 # monthly data, but could be extended to daily price data.
 #
 # FUNCTION INPUT ARGS
+#   - symbol_filters = input list of stocks that are used to filter in_df (optional)
 #   - in_df          = input price dataframe, where in_df takes priority over in_fp
 #   - in_fp          = input price complete filepath
 #   - in_company_fp  = input company overview complete filepath (optional)
@@ -22,7 +23,7 @@
 #
 #
 # OUTPUT DATAFRAMES    
-#   - out_df (contains price data with computed stats)
+#   - out_df 
 #
 # OUTPUT FILES
 #   - outdsn_parquet (optional)
@@ -30,6 +31,7 @@
 ############################################################################################################
 ############################################################################################################
 def getPriceABT(
+    symbol_filters = [],    
     in_df          = '',   
     in_fp          = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\PRICE\MONTHLY\monthlyPrices_av_stock.parquet',      
     in_company_fp  = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\COMPANY\companyOverviews_fmp_stock.parquet',
@@ -59,6 +61,13 @@ def getPriceABT(
     ###################################################################
     if len(in_df)==0:
         in_df = pd.read_parquet(in_fp, engine='pyarrow')  
+    
+    ###########################################################################
+    # If a stock filter list was specified, filter the input dataframe.
+    ###########################################################################
+    if len(symbol_filters)>0:
+        symbol_filters = list(map(lambda x: x.upper(),symbol_filters))
+        in_df = in_df[in_df['symbol'].isin(symbol_filters)]    
     
     ###################################################################
     # Apply the min and max date thresholds, if they were specified.
@@ -242,13 +251,13 @@ def getPriceABT(
     # Save as a PARQUET file, if one was given.
     curr_len = len(outdsn_parquet)
     if curr_len>=9 and outdsn_parquet[curr_len-8:curr_len]=='.parquet':
-        out_parquet = f'{outpath}\{outdsn_parquet}' 
+        out_parquet = f'{outpath}/{outdsn_parquet}' 
         out_df.to_parquet(f'{out_parquet}',index=False)
     
     # Save as a CSV file, if one was given.
     curr_len = len(outdsn_csv)
     if curr_len>=5 and outdsn_csv[curr_len-4:curr_len]=='.csv':
-        out_csv = f'{outpath}\{outdsn_csv}' 
+        out_csv = f'{outpath}/{outdsn_csv}' 
         out_df.to_csv(f'{out_csv}',index=False)
     
     ###################################################################

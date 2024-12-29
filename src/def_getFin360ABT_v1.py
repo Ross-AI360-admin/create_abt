@@ -1,39 +1,23 @@
 ############################################################################################################
 ############################################################################################################
-# FUNCTION DEFINITION: getKeyMetricsABT()
+# FUNCTION DEFINITION: getPiotroskiABT()
 #
 # DESCRIPTION: This function computes a wide set of performance related metrics for the key financial 
 # metrics data that is provided by the FMP API service.
-#
-# FUNCTION INPUT ARGS
-#   - symbol_filters = input list of stocks that are used to filter in_df (optional)
-#   - in_df          = input key metrics dataframe, where in_df takes priority over in_fp
-#   - in_fp          = input key metrics complete filepath
-#   - in_company_fp  = input company overview complete filepath (optional)
-#   - min_date       = the minimum date filter to apply to output data (optional, format is '2018-01-01')
-#   - max_date       = the maximum date filter to apply to output data (optional)
-#   - outpath        = the folder path where all output data will be saved
-#   - outdsn_parquet = the name of output parquet file
-#   - outdsn_csv     = the name of the output csv file
-#
-# OUTPUT DATAFRAMES
-#   - out_df
-#
-# OUTPUT FILES
-#   - outdsn_parquet (optional)
-#   - outdsn_csv (optional)
 ############################################################################################################
 ############################################################################################################
 def getKeyMetricABT_qtr(
     symbol_filters  = [],
     in_df           = '',
-    in_fp           = '',      
-    in_company_fp   = '',
+    in_fp           = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\FINANCIAL\QUARTERLY\keyMetrics_qtr_fmp_stock.parquet',      
+    in_company_fp   = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\COMPANY\companyOverviews_fmp_stock.parquet',
+    in_piotroski_fp = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\FINANCIAL\QUARTERLY\piotroskiScores_qtr_fmp_stock.parquet',
+    in_price_fp     = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\PRICE\MONTHLY\monthlyPrices_av_stock.parquet',
     min_date        = '2018-01-01',
     max_date        = '',
-    outpath         = '',
-    outdsn_parquet  = '',
-    outdsn_csv      = ''   
+    outpath         = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\FINANCIAL\QUARTERLY',
+    outdsn_parquet  = 'keyMetricStats_qtr_fmp_stock.parquet',
+    outdsn_csv      = 'keyMetricStats_qtr_fmp_stock.csv'   
 ):
     
     ###########################################################################
@@ -41,7 +25,7 @@ def getKeyMetricABT_qtr(
     ###########################################################################
     import pandas as pd    
     import numpy as np
-    # import fastparquet as fp
+    import fastparquet as fp
     
     ###########################################################################
     # Load input data from the specified input file, if no input dataframe was 
@@ -149,11 +133,42 @@ def getKeyMetricABT_qtr(
     # Merge in the Company Overview data, the Piotroski Score data, and the
     # Stock Price Return Stats data, if specified.
     ###########################################################################
+    
+    # Merge in the Company Overviews.
     curr_len = len(in_company_fp)
     if curr_len>=9 and in_company_fp[curr_len-8:curr_len]=='.parquet':
         in_company_df = pd.read_parquet(in_company_fp, engine='pyarrow') 
-        in_company_df = in_company_df[['symbol','sector','industry','ipo_date','isActivelyTrading']]        
+        keeplist = ['symbol','sector','industry','ipo_date','companyName','description']
+        keeplist += ['beta','volAvg','mktCap','isActivelyTrading']
+        in_company_df = in_company_df[keeplist]
+        in_company_df.rename({
+            'companyName':'name',
+            'description': 'desc',
+            'beta': 'curr_beta',
+            'volAvg': 'curr_volAvg',
+            'mktCap': 'curr_mktCap'
+        }, axis='columns', inplace=True)         
         out_df = pd.merge(out_df, in_company_df, on=['symbol'], how='left')
+       
+    # Merge in the Piotroski Scores.    
+    curr_len = len(in_piotroski_fp)
+    if curr_len>=9 and in_piotroski_fp[curr_len-8:curr_len]=='.parquet':        
+        in_piotroski_df = pd.read_parquet(in_piotroski_fp, engine='pyarrow') 
+        keeplist = ['symbol','date','Piotroski_Score','CR1','CR2','CR3','CR4','CR5','CR7','CR8','CR9']                
+        in_piotroski_df = in_piotroski_df[keeplist]
+        out_df = pd.merge(out_df, in_piotroski_df, on=['symbol','date'], how='left')
+
+    # Merge in the Stock Price Return Stats.
+    curr_len = len(in_price_fp)
+    if curr_len>=9 and in_price_fp[curr_len-8:curr_len]=='.parquet':    
+        in_price_df = pd.read_parquet(in_price_fp, engine='pyarrow') 
+        # keeplist = ['symbol','date','date_1m','date_3m','date_6m','date_1y','r_1m','r_3m','r_6m','r_1y']      
+        keeplist = ['symbol','date_14m','r_1y']
+        in_price_df = in_price_df[keeplist]
+        in_price_df.rename({
+            'date_14m':'date'
+        }, axis='columns', inplace=True)   
+        out_df = pd.merge(out_df, in_price_df, on=['symbol','date'], how='left')
         
     ###########################################################################
     # Create the rolling quarter and annual Key Metric summary columns. 
@@ -312,6 +327,7 @@ def getKeyMetricABT_qtr(
     col_order += ['nlag','max_nlag','firstLast_flag','reverse_nlag']
     col_order += ['dqPass_notNull','dqPass_limits','dqPass_pc']
     col_order += ['days_0_1y','days_1_2y']
+    col_order += ['r_1y']
     for i, cm in enumerate(metric_list):
                 
         col_order += [cm+'_0_1q',cm+'_1_2q',cm+'_2_3q',cm+'_3_4q',cm+'_4_5q',cm+'_5_6q',cm+'_6_7q',cm+'_7_8q',cm+'_8_9q']
@@ -320,7 +336,8 @@ def getKeyMetricABT_qtr(
         col_order += [cm+'_0_1y',cm+'_1_2y',cm+'_2_3y',cm+'_3_4y']
         col_order += [cm+'_pc_0_1y',cm+'_pc_1_2y',cm+'_pc_2_3y']
     
-    col_order += ['sector','industry','ipo_date','isActivelyTrading']
+    col_order += ['sector','industry','ipo_date','name','desc']
+    col_order += ['curr_beta','curr_volAvg','curr_mktCap','isActivelyTrading']
     
     col_remain = [col for col in out_df.columns if col not in col_order]
     out_df = out_df[col_order+col_remain] 
@@ -332,19 +349,20 @@ def getKeyMetricABT_qtr(
     # Save as a PARQUET file, if one was given.
     curr_len = len(outdsn_parquet)
     if curr_len>=9 and outdsn_parquet[curr_len-8:curr_len]=='.parquet':
-        out_parquet = f'{outpath}/{outdsn_parquet}' 
-        out_df.to_parquet(f'{out_parquet}',index=False)
+        out_parquet = f'{outpath}\{outdsn_parquet}' 
+        fp.write(f'{out_parquet}',out_df)
+        # out_df.to_parquet(f'{out_parquet}',index=False)
     
     # Save as a CSV file, if one was given.
     curr_len = len(outdsn_csv)
     if curr_len>=5 and outdsn_csv[curr_len-4:curr_len]=='.csv':
-        out_csv = f'{outpath}/{outdsn_csv}' 
+        out_csv = f'{outpath}\{outdsn_csv}' 
         out_df.to_csv(f'{out_csv}',index=False)       
     
     ###################################################################
     # RETURN the output dataframe.
     ###################################################################
-    return out_df 
+    return in_df, out_df 
 
 
 

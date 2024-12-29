@@ -9,8 +9,8 @@
 # sys.arv[5] = The complete filepath to the company overview data 
 # sys.arv[6] = The minimum date filter that is applied to the output data
 # sys.arv[7] = The complete folderpath where the output parquet and csv files will be saved
-# sys.arv[8] = The name of the output parquet file containg the price stats data
-# sys.arv[9] = The name of the output csv file containing the price stats data
+# sys.arv[8] = The name of the output parquet file containing the Piotroski score ABT
+# sys.arv[9] = The name of the output csv file containing the Piotroski score ABT
 ###################################################################################################
 ###################################################################################################
 
@@ -27,7 +27,7 @@ src_path = f'{sys.argv[1]}/create_abt/src'
 sys.path.append(src_path)
 from def_getPiotroskiABT_v1 import *
 
-# Run the function to create monthly price statistics. .
+# Run the function to create quarterly annualized Piotroski scores.
 print(f"\nRunning the code that computes the Piotroski Scores.")
 print(f"is_fp = {sys.argv[2]}")
 print(f"bs_fp = {sys.argv[3]}")
@@ -52,13 +52,13 @@ scores_df = getPiotroskiABT(
 # MANUAL MODE: Run the function that calculates the Piotroski scores. 
 ############################################################################### 
 
+# Create the Piotroski scores for stock data using quarterly financial statements.
 # import sys
 # from pathlib import Path
 # src_path = 'C:/codebase/create_abt/src'
 # sys.path.append(src_path)
 # from def_getPiotroskiABT_v1 import *
 
-# Create the Piotroski scores for stock data using quarterly financial statements.
 # scores_df = getPiotroskiABT(
 #     is_fp          = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/FINANCIAL/QUARTERLY/incomeStatements_qtr_fmp_stock.parquet',
 #     bs_fp          = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/FINANCIAL/QUARTERLY/balanceSheets_qtr_fmp_stock.parquet',

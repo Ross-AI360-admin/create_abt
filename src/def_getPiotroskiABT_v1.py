@@ -26,6 +26,7 @@
 # DOCUMENTATION: https://www.investopedia.com/terms/p/piotroski-score.asp
 #
 # FUNCTION INPUT ARGS
+#   - symbol_filters = input list of stocks that are used to filter in_df (optional)
 #   - is_df          = the income statement dataframe, which takes precedent over is_fp
 #   - bs_df          = the balance sheet dataframe, which takes precedent over bs_fp
 #   - cf_df          = the cashflow statement dataframe, which takes precedent over cf_fp
@@ -47,7 +48,7 @@
 #   - date (date)
 #
 # OUTPUT DATAFRAMES
-#   - out_df (contains price data for stocks and ETFs in the input list)
+#   - out_df 
 #
 # OUTPUT FILES
 #   - outdsn_parquet (optional)
@@ -55,6 +56,7 @@
 ############################################################################################################
 ############################################################################################################
 def getPiotroskiABT(
+    symbol_filters = [],    
     is_df          = '',
     bs_df          = '',
     cf_df          = '',         
@@ -85,6 +87,15 @@ def getPiotroskiABT(
         bs_df = pd.read_parquet(bs_fp, engine='pyarrow')
     if len(cf_df)==0:    
         cf_df = pd.read_parquet(cf_fp, engine='pyarrow')
+
+    ###########################################################################
+    # If a stock filter list was specified, filter the input dataframe.
+    ###########################################################################
+    if len(symbol_filters)>0:
+        symbol_filters = list(map(lambda x: x.upper(),symbol_filters))
+        is_df = is_df[is_df['symbol'].isin(symbol_filters)]
+        bs_df = bs_df[bs_df['symbol'].isin(symbol_filters)]
+        cf_df = cf_df[cf_df['symbol'].isin(symbol_filters)]
 
     ###########################################################################
     # Sort by symbol and date.
@@ -187,12 +198,19 @@ def getPiotroskiABT(
         out_df = pd.merge(out_df, in_company_df, on=['symbol'], how='left')
 
     ###################################################################
-    # Calculate the Piotroski scores by calling the Piotroski function.
+    # Compute the Piotroski scores by calling the Piotroski function.
     ###################################################################
+    
+    # Compute the Piotroski score for each stock.
     out_df[['Piotroski_Score','CR1','CR2','CR3','CR4','CR5','CR6','CR7','CR8','CR9']] = out_df.apply(computePiotroskiRules, axis=1)    
 
-    # Drop lag columns, since they are not needed anymore.
+    # Drop the lag columns, since they are not needed anymore.
     out_df = out_df.loc[:, ~out_df.columns.str.endswith('lag4')]
+
+    # Compute the mean of the last 4 Piotroski scores.
+    out_df['Piotroski_Score_1yrAvg'] = out_df.groupby(['symbol'])['Piotroski_Score'].rolling(4).mean().reset_index(level=0,drop=True)
+    out_df['Piotroski_Score_1yrMin'] = out_df.groupby(['symbol'])['Piotroski_Score'].rolling(4).min().reset_index(level=0,drop=True)
+    out_df['Piotroski_Score_1yrMax'] = out_df.groupby(['symbol'])['Piotroski_Score'].rolling(4).max().reset_index(level=0,drop=True)
 
     ###########################################################################
     # Create a row record count (nlag) for each symbol, the max record count,
@@ -210,7 +228,8 @@ def getPiotroskiABT(
     col_order=[]
     col_order += ['symbol','date'] 
     col_order += ['nlag','reverse_nlag','max_nlag','firstLast_flag'] 
-    col_order += ['Piotroski_Score','CR1','CR2','CR3','CR4','CR5','CR6','CR7','CR8','CR9']    
+    col_order += ['Piotroski_Score','Piotroski_Score_1yrAvg','Piotroski_Score_1yrMin','Piotroski_Score_1yrMax']  
+    col_order += ['CR1','CR2','CR3','CR4','CR5','CR6','CR7','CR8','CR9']  
     col_remain = [col for col in out_df.columns if col not in col_order]
     out_df = out_df[col_order+col_remain]       
 
@@ -221,13 +240,13 @@ def getPiotroskiABT(
     # Save as a PARQUET file, if one was given.
     curr_len = len(outdsn_parquet)
     if curr_len>=9 and outdsn_parquet[curr_len-8:curr_len]=='.parquet':
-        out_parquet = f'{outpath}\{outdsn_parquet}' 
+        out_parquet = f'{outpath}/{outdsn_parquet}' 
         out_df.to_parquet(f'{out_parquet}',index=False)
     
     # Save as a CSV file, if one was given.
     curr_len = len(outdsn_csv)
     if curr_len>=5 and outdsn_csv[curr_len-4:curr_len]=='.csv':
-        out_csv = f'{outpath}\{outdsn_csv}' 
+        out_csv = f'{outpath}/{outdsn_csv}' 
         out_df.to_csv(f'{out_csv}',index=False)  
 
     ###################################################################

@@ -25,7 +25,7 @@ src_path = f'{sys.argv[1]}/create_abt/src'
 sys.path.append(src_path)
 from def_getPriceABT_v1 import getPriceABT
 
-# Run the function to create monthly price statistics. .
+# Run the function to create monthly price statistics.
 print(f"\nRunning the code that creates the monthly price stats for both stocks and ETFs.")
 print(f"in_fp   = {sys.argv[2]}")
 print(f"in_company_fp = {sys.argv[3]}")
@@ -48,13 +48,13 @@ print(f"Done.\n")
 # MANUAL MODE: Run the function that creates monthly price statistics. 
 ############################################################################### 
 
+# STOCK: Create monthly price ABT.
 # import sys
 # from pathlib import Path
 # src_path = 'C:/codebase/create_abt/src'
 # sys.path.append(src_path)
 # from def_getPriceABT_v1 import getPriceABT
 
-# STOCK: Create monthly price ABT.
 # idf, odf = getPriceABT(
 #     in_fp          = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/PRICE/MONTHLY/monthlyPrices_av_stock.parquet',
 #     in_company_fp  = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/COMPANY/companyOverviews_fmp_stock.parquet',
@@ -66,6 +66,12 @@ print(f"Done.\n")
 # )
 
 # ETF: Create monthly price stats.
+# import sys
+# from pathlib import Path
+# src_path = 'C:/codebase/create_abt/src'
+# sys.path.append(src_path)
+# from def_getPriceABT_v1 import getPriceABT
+
 # idf, odf = getPriceABT(
 #     in_fp          = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/PRICE/MONTHLY/monthlyPrices_av_etf.parquet',      
 #     min_date       = '2010-01-01',
@@ -76,6 +82,12 @@ print(f"Done.\n")
 # )
 
 # ALL: Create monthly price stats.
+# import sys
+# from pathlib import Path
+# src_path = 'C:/codebase/create_abt/src'
+# sys.path.append(src_path)
+# from def_getPriceABT_v1 import getPriceABT
+
 # idf, odf = getPriceABT(   
 #     in_fp          = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/PRICE/MONTHLY/monthlyPrices_av_all.parquet',      
 #     min_date       = '2010-01-01',
