@@ -194,7 +194,7 @@ def getPiotroskiABT(
     curr_len = len(in_company_fp)
     if curr_len>=9 and in_company_fp[curr_len-8:curr_len]=='.parquet':
         in_company_df = pd.read_parquet(in_company_fp, engine='pyarrow') 
-        in_company_df = in_company_df[['symbol','sector','industry','ipo_date']]
+        in_company_df = in_company_df[['symbol','sector','industry','ipo_date','isActivelyTrading']]
         out_df = pd.merge(out_df, in_company_df, on=['symbol'], how='left')
 
     ###################################################################
@@ -227,7 +227,7 @@ def getPiotroskiABT(
     ###################################################################
     col_order=[]
     col_order += ['symbol','date'] 
-    col_order += ['nlag','reverse_nlag','max_nlag','firstLast_flag'] 
+    col_order += ['max_nlag','firstLast_flag','nlag','reverse_nlag'] 
     col_order += ['Piotroski_Score','Piotroski_Score_1yrAvg','Piotroski_Score_1yrMin','Piotroski_Score_1yrMax']  
     col_order += ['CR1','CR2','CR3','CR4','CR5','CR6','CR7','CR8','CR9']  
     col_remain = [col for col in out_df.columns if col not in col_order]

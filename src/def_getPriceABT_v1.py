@@ -70,6 +70,11 @@ def getPriceABT(
         in_df = in_df[in_df['symbol'].isin(symbol_filters)]    
     
     ###################################################################
+    # Drop any input columns that are not needed.
+    ###################################################################    
+    in_df.drop(['series_type','api_service','admin_runDate'], axis=1, inplace=True)
+    
+    ###################################################################
     # Apply the min and max date thresholds, if they were specified.
     ###################################################################
     if len(min_date)>0:
@@ -123,11 +128,16 @@ def getPriceABT(
     curr_len = len(in_company_fp)
     if curr_len>=9 and in_company_fp[curr_len-8:curr_len]=='.parquet':
         in_company_df = pd.read_parquet(in_company_fp, engine='pyarrow') 
-        in_company_df = in_company_df[['symbol','sector','industry','ipo_date']]
+        in_company_df = in_company_df[['symbol','sector','industry','ipo_date','isActivelyTrading']]
         out_df = pd.merge(out_df, in_company_df, on=['symbol'], how='left')
-        
-    # Create a record count for each symbol.
+   
+    # Create a row record count (nlag) for each symbol, the max record count,
+    # the reverese record count, and a first/last record flag.
     out_df['nlag'] = out_df.groupby(['symbol']).cumcount()
+    out_df['max_nlag'] = out_df.groupby(['symbol'])['nlag'].transform('max')
+    out_df['reverse_nlag'] = out_df['max_nlag'] -out_df['nlag']  
+    conds = [ out_df['nlag']==out_df['max_nlag'], out_df['nlag']==0 ]
+    out_df['firstLast_flag'] = np.select(conds, ['L','F'], default='I')     
    
     # Create the 1-month, 3-month, 6-month and 1-year lagged dates.
     out_df['date_1m'] = out_df.groupby(['symbol'])['date'].shift(1) 
@@ -207,14 +217,26 @@ def getPriceABT(
     # Create the Sharpe ratios for 1 through 7 year time windows, where the 
     # numerator uses annualized returns and the denominator uses the standard
     # deviations for the monthly returns.
-    out_df['shp_1y'] = out_df['r_1y'] / (out_df.groupby(['symbol'])['r_1m'].rolling(12).std().reset_index(level=0,drop=True))
-    out_df['shp_2y'] = out_df['r_2y'] / (out_df.groupby(['symbol'])['r_1m'].rolling(24).std().reset_index(level=0,drop=True))
-    out_df['shp_3y'] = out_df['r_3y'] / (out_df.groupby(['symbol'])['r_1m'].rolling(36).std().reset_index(level=0,drop=True))
-    out_df['shp_4y'] = out_df['r_4y'] / (out_df.groupby(['symbol'])['r_1m'].rolling(48).std().reset_index(level=0,drop=True))    
-    out_df['shp_5y'] = out_df['r_5y'] / (out_df.groupby(['symbol'])['r_1m'].rolling(60).std().reset_index(level=0,drop=True))
-    out_df['shp_6y'] = out_df['r_6y'] / (out_df.groupby(['symbol'])['r_1m'].rolling(72).std().reset_index(level=0,drop=True))    
-    out_df['shp_7y'] = out_df['r_7y'] / (out_df.groupby(['symbol'])['r_1m'].rolling(84).std().reset_index(level=0,drop=True))      
+    out_df['shp_1y'] = out_df['r_1y']/(out_df.groupby(['symbol'])['r_1m'].rolling(12).std().reset_index(level=0,drop=True))
+    out_df['shp_2y'] = out_df['r_2y']/(out_df.groupby(['symbol'])['r_1m'].rolling(24).std().reset_index(level=0,drop=True))
+    out_df['shp_3y'] = out_df['r_3y']/(out_df.groupby(['symbol'])['r_1m'].rolling(36).std().reset_index(level=0,drop=True))
+    out_df['shp_4y'] = out_df['r_4y']/(out_df.groupby(['symbol'])['r_1m'].rolling(48).std().reset_index(level=0,drop=True))    
+    out_df['shp_5y'] = out_df['r_5y']/(out_df.groupby(['symbol'])['r_1m'].rolling(60).std().reset_index(level=0,drop=True))
+    out_df['shp_6y'] = out_df['r_6y']/(out_df.groupby(['symbol'])['r_1m'].rolling(72).std().reset_index(level=0,drop=True))    
+    out_df['shp_7y'] = out_df['r_7y']/(out_df.groupby(['symbol'])['r_1m'].rolling(84).std().reset_index(level=0,drop=True))      
     
+    # Create the rolling one-year volatilties.
+    out_df['vol_1_2y'] = out_df.groupby(['symbol'])['vol_1y'].shift(12) 
+    out_df['vol_2_3y'] = out_df.groupby(['symbol'])['vol_1y'].shift(24) 
+    out_df['vol_3_4y'] = out_df.groupby(['symbol'])['vol_1y'].shift(36) 
+    out_df['vol_4_5y'] = out_df.groupby(['symbol'])['vol_1y'].shift(48) 
+
+    # Create the rolling one-year Sharpe ratios.
+    out_df['shp_1_2y'] = out_df['r_1_2y']/out_df['vol_1_2y']
+    out_df['shp_2_3y'] = out_df['r_2_3y']/out_df['vol_2_3y']
+    out_df['shp_3_4y'] = out_df['r_3_4y']/out_df['vol_3_4y']
+    out_df['shp_4_5y'] = out_df['r_4_5y']/out_df['vol_4_5y']
+
     # Create the overall missing data columns for returns and sharpe ratios.
     out_df['isnull_1y'] = np.where( (pd.isnull(out_df['r_1y'])==True) | (pd.isnull(out_df['shp_1y'])==True) , True, False )
     out_df['isnull_2y'] = np.where( (pd.isnull(out_df['r_2y'])==True) | (pd.isnull(out_df['shp_2y'])==True) , True, False )
@@ -235,14 +257,23 @@ def getPriceABT(
     drop_list = ['isnull_1y','isnull_2y','isnull_3y','isnull_4y','isnull_5y','isnull_6y','isnull_7y']     
     out_df.drop(drop_list, axis=1, inplace=True, errors='ignore')    
     
-    # Create columns that make general purpose data filtering easy to perform.
-    out_df['year'] = out_df['date'].dt.year
+    # Create any additional columns that make general purpose data filtering easy to perform.
+    out_df['date_year'] = out_df['date'].dt.year
     out_df['min_date'] = out_df.groupby(['symbol'])['date'].transform('min')
     out_df['max_date'] = out_df.groupby(['symbol'])['date'].transform('max')
-    out_df['max_nlag'] = out_df.groupby(['symbol'])['nlag'].transform('max')
-    out_df['max_data_years'] = out_df.groupby(['symbol'])['data_years'].transform('max')
-    conds = [ out_df['nlag']==out_df['max_nlag'], out_df['nlag']==0 ]
-    out_df['firstLast_flag'] = np.select(conds, ['L','F'], default='I')    
+    out_df['max_data_years'] = out_df.groupby(['symbol'])['data_years'].transform('max')  
+    
+    ###################################################################
+    # Reorder the output columns and also only keep columns specified.
+    ###################################################################
+    col_order = []    
+    col_order += ['symbol','asset_type','date','date_year']
+    col_order += ['min_date','max_date','data_years','max_data_years']
+    col_order += ['max_nlag','firstLast_flag','nlag','reverse_nlag']
+    col_order += ['open','close','adj_close','volume','div_amount']
+    col_order += ['sector','industry','ipo_date','isActivelyTrading']
+    col_remain = [col for col in out_df.columns if col not in col_order]
+    out_df = out_df[col_order+col_remain]     
     
     ###################################################################
     # SAVE the output dataframe as a file.

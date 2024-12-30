@@ -112,6 +112,35 @@ def getFinStatementABT(
     if len(max_date)>0:
         out_df = out_df.loc[out_df['date']<=pd.to_datetime(max_date)]  
 
+    ###########################################################################
+    # Create a row record count (nlag) for each symbol, the max record count,
+    # the reverese record count, and a first/last record flag.
+    ###########################################################################
+    out_df['nlag'] = out_df.groupby(['symbol']).cumcount()
+    out_df['max_nlag'] = out_df.groupby(['symbol'])['nlag'].transform('max')
+    out_df['reverse_nlag'] = out_df['max_nlag'] -out_df['nlag']  
+    conds = [ out_df['nlag']==out_df['max_nlag'], out_df['nlag']==0 ]
+    out_df['firstLast_flag'] = np.select(conds, ['L','F'], default='I') 
+
+    ###################################################################
+    # Merge in company overview data, if it is specified.
+    ###################################################################
+    curr_len = len(in_company_fp)
+    if curr_len>=9 and in_company_fp[curr_len-8:curr_len]=='.parquet':
+        in_company_df = pd.read_parquet(in_company_fp, engine='pyarrow') 
+        in_company_df = in_company_df[['symbol','sector','industry','ipo_date','isActivelyTrading']]
+        out_df = pd.merge(out_df, in_company_df, on=['symbol'], how='left')
+
+    ###################################################################
+    # Reorder the output columns and also only keep columns specified.
+    ###################################################################
+    col_order = []    
+    col_order += ['symbol','date','date_qtr','fiscal_year','fiscal_qtr']
+    col_order += ['max_nlag','firstLast_flag','nlag','reverse_nlag']
+    
+    col_remain = [col for col in out_df.columns if col not in col_order]
+    out_df = out_df[col_order+col_remain] 
+
     ###################################################################
     # SAVE the output dataframe as a file.
     ###################################################################

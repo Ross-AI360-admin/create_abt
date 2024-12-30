@@ -49,23 +49,23 @@ print(f"Done.\n")
 ############################################################################### 
 
 # STOCK: Create monthly price ABT.
-# import sys
-# from pathlib import Path
-# src_path = 'C:/codebase/create_abt/src'
-# sys.path.append(src_path)
-# from def_getPriceABT_v1 import getPriceABT
+import sys
+from pathlib import Path
+src_path = 'C:/codebase/create_abt/src'
+sys.path.append(src_path)
+from def_getPriceABT_v1 import getPriceABT
 
-# idf, odf = getPriceABT(
-#     in_fp          = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/PRICE/MONTHLY/monthlyPrices_av_stock.parquet',
-#     in_company_fp  = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/COMPANY/companyOverviews_fmp_stock.parquet',
-#     min_date       = '2018-01-01',
-#     max_date       = '',
-#     outpath        = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/ABT/PRICE_ABT',
-#     outdsn_parquet = 'priceABT_month_stock.parquet',
-#     outdsn_csv     = 'priceABT_month_stock.csv'   
-# )
+idf, odf = getPriceABT(
+    in_fp          = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/PRICE/MONTHLY/monthlyPrices_av_stock.parquet',
+    in_company_fp  = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/COMPANY/companyOverviews_fmp_stock.parquet',
+    min_date       = '2016-01-01',
+    max_date       = '',
+    outpath        = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/ABT/PRICE_ABT',
+    outdsn_parquet = 'priceABT_month_stock.parquet',
+    outdsn_csv     = 'priceABT_month_stock.csv'   
+)
 
-# ETF: Create monthly price stats.
+# ETF: Create monthly price ABT.
 # import sys
 # from pathlib import Path
 # src_path = 'C:/codebase/create_abt/src'
@@ -81,7 +81,7 @@ print(f"Done.\n")
 #     outdsn_csv     = 'priceABT_month_etf.csv'   
 # )
 
-# ALL: Create monthly price stats.
+# ALL: Create monthly price ABT.
 # import sys
 # from pathlib import Path
 # src_path = 'C:/codebase/create_abt/src'

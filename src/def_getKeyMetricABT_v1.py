@@ -309,7 +309,7 @@ def getKeyMetricABT_qtr(
     ###################################################################
     col_order = []    
     col_order += ['symbol','date','date_year','fiscal_qtr']
-    col_order += ['nlag','max_nlag','firstLast_flag','reverse_nlag']
+    col_order += ['max_nlag','firstLast_flag','nlag','reverse_nlag']
     col_order += ['dqPass_notNull','dqPass_limits','dqPass_pc']
     col_order += ['days_0_1y','days_1_2y']
     for i, cm in enumerate(metric_list):
