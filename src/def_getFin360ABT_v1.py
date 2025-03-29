@@ -1,12 +1,12 @@
 ############################################################################################################
 ############################################################################################################
-# FUNCTION DEFINITION: getPiotroskiABT()
+# FUNCTION DEFINITION: getStatevectorABT()
 #
-# DESCRIPTION: This function computes a wide set of performance related metrics for the key financial 
-# metrics data that is provided by the FMP API service.
+# DESCRIPTION: This function computes a comprehensive set of performance related metrics by integrating  
+# company profile, piotroski score, monthly price, and financial statement data together.
 ############################################################################################################
 ############################################################################################################
-def getKeyMetricABT_qtr(
+def getStatevectorABT_qtr(
     symbol_filters  = [],
     in_df           = '',
     in_fp           = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\FINANCIAL\QUARTERLY\keyMetrics_qtr_fmp_stock.parquet',      

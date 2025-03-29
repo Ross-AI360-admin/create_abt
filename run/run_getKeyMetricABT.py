@@ -44,23 +44,23 @@ keyMetricABT = getKeyMetricABT_qtr(
 ###############################################################################
 
 # Create the quarterly Key Metrics for stocks dataframe only.
-import sys
-from pathlib import Path
-src_path = 'C:/codebase/create_abt/src'
-sys.path.append(src_path)
-from def_getKeyMetricABT_v1 import getKeyMetricABT_qtr
+# import sys
+# from pathlib import Path
+# src_path = 'C:/codebase/create_abt/src'
+# sys.path.append(src_path)
+# from def_getKeyMetricABT_v1 import getKeyMetricABT_qtr
 
-keyMetricABT = getKeyMetricABT_qtr(
-    symbol_filters  = ['AAPL','MSFT'],
-    in_df           = '',
-    in_fp           = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/FINANCIAL/QUARTERLY/keyMetrics_qtr_fmp_stock.parquet',      
-    in_company_fp   = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/COMPANY/companyOverviews_fmp_stock.parquet',
-    min_date        = '2020-01-01',
-    max_date        = '',
-    outpath         = '',
-    outdsn_parquet  = '',
-    outdsn_csv      = ''   
-)
+# keyMetricABT = getKeyMetricABT_qtr(
+#     symbol_filters  = ['AAPL','MSFT'],
+#     in_df           = '',
+#     in_fp           = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/FINANCIAL/QUARTERLY/keyMetrics_qtr_fmp_stock.parquet',      
+#     in_company_fp   = r'C:/Users/sharo/OneDrive - aiinvestor360.com/DATA/COMPANY/companyOverviews_fmp_stock.parquet',
+#     min_date        = '2020-01-01',
+#     max_date        = '',
+#     outpath         = '',
+#     outdsn_parquet  = '',
+#     outdsn_csv      = ''   
+# )
 
 # Create the quarterly Key Metrics for stocks dataframe and save the output files.
 # import sys

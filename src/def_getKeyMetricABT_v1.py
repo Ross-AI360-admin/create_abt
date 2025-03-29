@@ -2,16 +2,25 @@
 ############################################################################################################
 # FUNCTION DEFINITION: getKeyMetricsABT()
 #
+# APPLICATION: Only for stock data, since ETFs do not have key metrics data.
+#
 # DESCRIPTION: This function computes a wide set of performance related metrics for the key financial 
-# metrics data that is provided by the FMP API service.
+# metrics data that is provided by the FMP API service. This function requires either an input dataframe
+# or a complete input parquet filepath be provided for the key metrics. Supplying company profiles is 
+# optional.
 #
 # FUNCTION INPUT ARGS
+#
 #   - symbol_filters = input list of stocks that are used to filter in_df (optional)
+#
 #   - in_df          = input key metrics dataframe, where in_df takes priority over in_fp
 #   - in_fp          = input key metrics complete filepath
+#
 #   - in_company_fp  = input company overview complete filepath (optional)
+#
 #   - min_date       = the minimum date filter to apply to output data (optional, format is '2018-01-01')
 #   - max_date       = the maximum date filter to apply to output data (optional)
+#
 #   - outpath        = the folder path where all output data will be saved
 #   - outdsn_parquet = the name of output parquet file
 #   - outdsn_csv     = the name of the output csv file
@@ -65,11 +74,13 @@ def getKeyMetricABT_qtr(
     # Also, we drop marketCap and instead use the market cap coming from the 
     # Company Overview data since it is more reliable.
     ###########################################################################
-    keeplist  = ['symbol','date','fiscal_qtr','peRatio']
-    keeplist += ['revenuePerShare','netIncomePerShare','cashPerShare','freeCashFlowPerShare','bookValuePerShare']
-    keeplist += ['shareholdersEquityPerShare','interestDebtPerShare']    
+    keeplist  = ['symbol','date','date_qtr','fiscal_year','fiscal_qtr']
+    keeplist += ['peRatio','revenuePerShare','netIncomePerShare','cashPerShare','freeCashFlowPerShare']
+    keeplist += ['bookValuePerShare','shareholdersEquityPerShare','interestDebtPerShare']    
     keeplist += ['earningsYield','freeCashFlowYield','debtToEquity','debtToAssets']
+    keeplist += ['admin_runDate']
     in_df = in_df[keeplist]
+    in_df.rename(columns={'admin_runDate':'admin_runDate_km'},inplace=True) 
     
     ###########################################################################
     # Sort by symbol and date.
@@ -81,17 +92,12 @@ def getKeyMetricABT_qtr(
     # Initialize the output dataframe.
     ###########################################################################
     out_df = in_df.copy()
-    
-    ###########################################################################
-    # Create a year column.
-    ###########################################################################
-    out_df['date_year'] = out_df['date'].dt.year
-                
+
     ###########################################################################
     # Rename columns.
     ###########################################################################
     out_df.rename({
-        'peRatio':'PE',
+        'peRatio':'PE_0_1q',
         'revenuePerShare':'RPS_0_1q',
         'netIncomePerShare':'NIPS_0_1q',
         'cashPerShare':'CPS_0_1q',
@@ -102,7 +108,14 @@ def getKeyMetricABT_qtr(
         'debtToEquity': 'DtoE',
         'debtToAssets': 'DtoA'
     }, axis='columns', inplace=True) 
-     
+    
+    ###########################################################################
+    # Create any additional date related columns.
+    ###########################################################################
+    out_df['year'] = out_df['date'].dt.year
+    out_df['year_char'] = out_df['year'].astype(str)
+    out_df['month_char'] = out_df['date'].dt.strftime('%b')                 
+         
     ###########################################################################
     # DATA QUALITY: Remove the most recent row of data for a stock if is has
     # incomplete RPS, NIPS, or BVPS data. This is needed since the FMP API can
@@ -124,10 +137,10 @@ def getKeyMetricABT_qtr(
     out_df = out_df.drop(['nlag','max_nlag'], axis=1)
     
     ###########################################################################
-    # DELETE HISTORICAL KEY METRIC DATA THAT IS NOT NEEDED: Apply 4-year 
+    # DELETE HISTORICAL KEY METRIC DATA THAT IS NOT NEEDED: Apply a 4-year 
     # buffered min date threshold, if a min date threshold was specified. We  
-    # use a buffered minimum date threshold, since we only need enough 
-    # historical to compute lagged values up to 4 years ago. For the max date
+    # use a buffered minimum date threshold, since we need enough historical 
+    # data to compute lagged values up to 4 years ago. For the max date
     # threshold, we just apply this directly as a filter.
     ###########################################################################
     
@@ -154,7 +167,7 @@ def getKeyMetricABT_qtr(
         in_company_df = pd.read_parquet(in_company_fp, engine='pyarrow') 
         in_company_df = in_company_df[['symbol','sector','industry','ipo_date','isActivelyTrading']]        
         out_df = pd.merge(out_df, in_company_df, on=['symbol'], how='left')
-        
+    
     ###########################################################################
     # Create the rolling quarter and annual Key Metric summary columns. 
     # Note that the last 4 reported values in the data might not represent a 
@@ -307,8 +320,12 @@ def getKeyMetricABT_qtr(
     ###################################################################
     # Reorder the output columns and also only keep columns specified.
     ###################################################################
+    
+    # Initialize the column order list.
     col_order = []    
-    col_order += ['symbol','date','date_year','fiscal_qtr']
+    
+    # Specify the left to right ordering of the key columns.
+    col_order += ['symbol','date','year','fiscal_year','fiscal_qtr']
     col_order += ['max_nlag','firstLast_flag','nlag','reverse_nlag']
     col_order += ['dqPass_notNull','dqPass_limits','dqPass_pc']
     col_order += ['days_0_1y','days_1_2y']
@@ -322,8 +339,16 @@ def getKeyMetricABT_qtr(
     
     col_order += ['sector','industry','ipo_date','isActivelyTrading']
     
+    # Specify the columns that are to be placed at the end.
+    col_end = ['date_qtr','year_char','month_char']
+    col_end += ['admin_runDate_km']    
+    
+    # Get the remaining columns that are not specifically specified.
     col_remain = [col for col in out_df.columns if col not in col_order]
-    out_df = out_df[col_order+col_remain] 
+    col_remain = [col for col in col_remain if col not in col_end]
+    
+    # Reorder the columns in the output dataframe.
+    out_df = out_df[col_order + col_remain + col_end] 
     
     ###################################################################
     # SAVE the output dataframe as a file.

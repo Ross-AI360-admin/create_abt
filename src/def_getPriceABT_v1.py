@@ -39,7 +39,8 @@ def getPriceABT(
     max_date       = '',
     outpath        = r'C:\Users\sharo\OneDrive - aiinvestor360.com\DATA\ABT\PRICE_ABT',
     outdsn_parquet = 'monthlyPriceABT_stock.parquet',
-    outdsn_csv     = 'monthlyPriceABT_stock.csv'   
+    outdsn_csv     = 'monthlyPriceABT_stock.csv',
+    in_etfinfo_fp  = ''
 ):
     
     ###################################################################
@@ -128,8 +129,17 @@ def getPriceABT(
     curr_len = len(in_company_fp)
     if curr_len>=9 and in_company_fp[curr_len-8:curr_len]=='.parquet':
         in_company_df = pd.read_parquet(in_company_fp, engine='pyarrow') 
-        in_company_df = in_company_df[['symbol','sector','industry','ipo_date','isActivelyTrading']]
+        keeplist = ['symbol','sector','industry','ipo_date','beta','companyName','description','isActivelyTrading']
+        in_company_df = in_company_df[keeplist]
         out_df = pd.merge(out_df, in_company_df, on=['symbol'], how='left')
+   
+    # Merge in ETF info data, if it is specified.
+    curr_len = len(in_etfinfo_fp)
+    if curr_len>=9 and in_etfinfo_fp[curr_len-8:curr_len]=='.parquet':
+        in_etfinfo_df = pd.read_parquet(in_etfinfo_fp, engine='pyarrow') 
+        keeplist = ['symbol','assetClass','expenseRatio','holdingsCount','aum','nav','navCurrency','domicile','website']
+        in_etfinfo_df = in_etfinfo_df[keeplist]
+        out_df = pd.merge(out_df, in_etfinfo_df, on=['symbol'], how='left')    
    
     # Create a row record count (nlag) for each symbol, the max record count,
     # the reverese record count, and a first/last record flag.

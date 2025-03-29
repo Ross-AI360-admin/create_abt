@@ -2,20 +2,30 @@
 ############################################################################################################
 # FUNCTION DEFINITION: getFinStatementABT()
 #
-# DESCRIPTION: This function computes a wide set of summary metrics for the income statement, balance 
-# sheet, and cashflow statement data provided by the FMP API service.
+# APPLICATION: Only for stock data, since ETFs do not have financial statement data.
 #
+# DESCRIPTION: This function computes a wide set of summary metrics for the income statement, balance 
+# sheet, and cashflow statement data provided by the FMP API service. This function requires either an
+# input dataframe or a complete input parquet filepath be provided for the income statements, balance  
+# sheets, cashflow statements. Supplying company profiles is optional.
+# 
 # FUNCTION INPUT ARGS
-#   - symbol_filters = input list of stocks that are used to filter in_df (optional)
+#
+#   - symbol_filters = input list of stocks that are used to filter all input data (optional)
+#
 #   - is_df          = the income statement dataframe, which takes precedent over is_fp
 #   - bs_df          = the balance sheet dataframe, which takes precedent over bs_fp
 #   - cf_df          = the cashflow statement dataframe, which takes precedent over cf_fp
+#
 #   - is_fp          = the complete filepath to the income statement parquet file
 #   - bs_fp          = the complete filepath to the balance sheet statement parquet file
 #   - cf_fp          = the complete filepath to the cashflow statement parquet file
+#
 #   - in_company_fp  = input company overview complete filepath (optional)
+#
 #   - min_date       = the minimum date filter to apply to output data (optional, format is '2018-01-01')
 #   - max_date       = the maximum date filter to apply to output data (optional)
+#
 #   - outpath        = the folder path where all output data will be saved
 #   - outdsn_parquet = the name of output parquet file
 #   - outdsn_csv     = the name of the output csv file
@@ -37,7 +47,7 @@ def getFinStatementABT(
     bs_fp          = '',
     cf_fp          = '',
     in_company_fp  = '',
-    min_date       = '2020-01-01',
+    min_date       = '2018-01-01',
     max_date       = '',    
     outpath        = '',
     outdsn_parquet = '',
@@ -52,7 +62,7 @@ def getFinStatementABT(
     import numpy as np
 
     ###################################################################
-    # Load input data, if no input dataframe was specfied.
+    # Load the data, if no input dataframe was specfied.
     ###################################################################
     if len(is_df)==0:    
         is_df = pd.read_parquet(is_fp, engine='pyarrow')
@@ -85,22 +95,44 @@ def getFinStatementABT(
     ###########################################################################
     # Keep only the columns that are needed for the desired summaries. 
     ###########################################################################
-    is_cols = ['symbol','date','date_qtr','fiscal_year','fiscal_qtr','reportedCurrency']
+    is_cols = ['symbol','date']
+    is_cols += ['fiscal_year','fiscal_qtr','reportedCurrency']
     is_cols += ['numShares','revenue','netIncome','netIncomeRatio']
+    is_cols += ['eps_qtr','epsdiluted']
+    is_cols += ['url_SEC','url_10K']
+    is_cols += ['admin_runDate']
     is_df = is_df[is_cols]
-    
+    is_df.rename(columns={\
+        'epsdiluted':'epsDiluted_qtr',\
+        'admin_runDate':'admin_runDate_is'\
+    }, inplace=True)
+    # is_df.rename(columns={'epsdiluted':'epsDiluted_qtr','admin_runDate':'admin_runDate_is'}, inplace=True)        
+            
     bs_cols = ['symbol','date']
     bs_cols += ['totalAssets','totalLiabilities','totalDebt','netDebt']
+    bs_cols += ['admin_runDate']
     bs_df = bs_df[bs_cols]
+    bs_df.rename(columns={'admin_runDate':'admin_runDate_bs'},inplace=True)  
     
-    cf_cols = ['symbol','date','fiscal_year','fiscal_qtr','reportedCurrency']
+    cf_cols = ['symbol','date']
+    cf_cols += ['inventory','debtRepayment','commonStockIssued','commonStockRepurchased']
+    cf_cols += ['operatingCashFlow','capitalExpenditure','freeCashFlow']    
+    cf_cols += ['admin_runDate']
     cf_df = cf_df[cf_cols] 
-    
+    cf_df.rename(columns={'admin_runDate':'admin_runDate_cf'},inplace=True) 
+        
     ###########################################################################
     # Merge the 3 financial statement dataframes into one overall dataframe
     # and then sort.
     ###########################################################################
+    
+    # Merge the balance sheets to the income statements.
     out_df = pd.merge(is_df, bs_df, on=['symbol','date'], how='left')     
+    out_df.sort_values(by=['symbol','date'], ascending=[True,True], inplace=True)
+    out_df.reset_index(level=0, drop=True, inplace=True) 
+
+    # Merge the cashflows into the output dataframe.
+    out_df = pd.merge(out_df, cf_df, on=['symbol','date'], how='left') 
     out_df.sort_values(by=['symbol','date'], ascending=[True,True], inplace=True)
     out_df.reset_index(level=0, drop=True, inplace=True) 
 
@@ -111,6 +143,13 @@ def getFinStatementABT(
         out_df = out_df.loc[out_df['date']>=pd.to_datetime(min_date)] 
     if len(max_date)>0:
         out_df = out_df.loc[out_df['date']<=pd.to_datetime(max_date)]  
+
+    ###########################################################################
+    # Create any additional date related columns.
+    ###########################################################################
+    out_df['year'] = out_df['date'].dt.year
+    out_df['year_char'] = out_df['year'].astype(str)
+    out_df['month_char'] = out_df['date'].dt.strftime('%b') 
 
     ###########################################################################
     # Create a row record count (nlag) for each symbol, the max record count,
@@ -134,12 +173,25 @@ def getFinStatementABT(
     ###################################################################
     # Reorder the output columns and also only keep columns specified.
     ###################################################################
-    col_order = []    
-    col_order += ['symbol','date','date_qtr','fiscal_year','fiscal_qtr']
-    col_order += ['max_nlag','firstLast_flag','nlag','reverse_nlag']
     
+    # Initialize the column order list.
+    col_order = []    
+    
+    # Specify the left to right ordering of the key columns.
+    col_order += ['symbol','date','year','fiscal_year','fiscal_qtr']
+    col_order += ['max_nlag','firstLast_flag','nlag','reverse_nlag']
+
+    # Specify the columns that are to be placed at the end.
+    col_end = ['year_char','month_char']
+    col_end += ['url_SEC','url_10K']
+    col_end += ['admin_runDate_is','admin_runDate_bs','admin_runDate_cf']
+    
+    # Get the remaining columns that are not specifically specified.
     col_remain = [col for col in out_df.columns if col not in col_order]
-    out_df = out_df[col_order+col_remain] 
+    col_remain = [col for col in col_remain if col not in col_end]
+    
+    # Reorder the columns in the output dataframe.
+    out_df = out_df[col_order + col_remain + col_end] 
 
     ###################################################################
     # SAVE the output dataframe as a file.
